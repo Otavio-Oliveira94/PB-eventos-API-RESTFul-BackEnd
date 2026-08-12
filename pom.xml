@@ -8,11 +8,6 @@
         <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <!--<groupId>com.eventosexpress</groupId>
-    <artifactId>eventospb</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>eventos-PB</name>
-    <description>eventos-PB</description>-->
     <groupId>com.eventosexpress</groupId>
     <artifactId>eventos-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
@@ -41,16 +36,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-h2console</artifactId>
         </dependency>
-        <!--<dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jdbc</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jdbc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>

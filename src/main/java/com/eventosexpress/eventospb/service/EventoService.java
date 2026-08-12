@@ -2,6 +2,7 @@ package com.eventosexpress.eventospb.service;
 
 import com.eventosexpress.eventospb.dto.EventoRequestDTO;
 import com.eventosexpress.eventospb.dto.EventoResponseDTO;
+import com.eventosexpress.eventospb.exception.EventoNaoEncontradoException;
 import com.eventosexpress.eventospb.mapper.EventoMapper;
 import com.eventosexpress.eventospb.model.Evento;
 import com.eventosexpress.eventospb.repository.EventoRepository;
@@ -57,8 +58,6 @@ public class EventoService {
 
     private Evento buscarEntidadePorId(Long id) {
         return eventoRepository.findById(id)
-                .orElseThrow(() ->
-                        new RuntimeException("Evento não encontrado.")
-                );
+                .orElseThrow(() -> new EventoNaoEncontradoException(id));
     }
 }
