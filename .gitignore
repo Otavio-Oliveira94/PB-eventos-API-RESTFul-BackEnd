@@ -34,3 +34,6 @@ build/
 
 # Arquivos locais de auditoria
 logs/
+
+# Banco H2 local
+data/
