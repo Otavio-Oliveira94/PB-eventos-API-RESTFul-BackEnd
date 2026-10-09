@@ -37,3 +37,8 @@ logs/
 
 # Banco H2 local
 data/
+
+# Configuracoes locais de ambiente
+.env
+.env.*
+!.env.example
