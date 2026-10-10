@@ -1,0 +1,85 @@
+discovery.kubernetes "pods" {
+  role = "pod"
+
+  namespaces {
+    names = ["eventos-express"]
+  }
+}
+
+discovery.relabel "logs" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    regex         = "eventos-service|inscricoes-service|frontend|rabbitmq"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_init"]
+    regex         = "false"
+    action        = "keep"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_label_app"]
+    target_label  = "service_name"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+
+  rule {
+    target_label = "app"
+    replacement  = "eventos-express"
+  }
+}
+
+loki.source.kubernetes "logs" {
+  targets    = discovery.relabel.logs.output
+  forward_to = [loki.process.logs.receiver]
+}
+
+loki.process "logs" {
+  stage.decolorize {}
+
+  stage.match {
+    selector = "{service_name=~\"eventos-service|inscricoes-service\"}"
+
+    stage.multiline {
+      firstline     = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
+      max_wait_time = "3s"
+      max_lines     = 256
+    }
+
+    stage.regex {
+      expression = "^[0-9]{4}-[0-9]{2}-[0-9]{2}T\\S+\\s+(?P<level>TRACE|DEBUG|INFO|WARN|ERROR)"
+    }
+
+    stage.labels {
+      values = {
+        level = "",
+      }
+    }
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
