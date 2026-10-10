@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: eventos-service-dados
+  namespace: eventos-express
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: eventos-service
+  namespace: eventos-express
+spec:
+  selector:
+    app: eventos-service
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: eventos-service
+  namespace: eventos-express
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: eventos-service
+  template:
+    metadata:
+      labels:
+        app: eventos-service
+    spec:
+      terminationGracePeriodSeconds: 40
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+        runAsNonRoot: true
+      initContainers:
+        - name: preparar-volume
+          image: eventos-express/eventos-service:k8s-v1
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -eu
+              mkdir -p /persistencia/data /persistencia/logs
+              chown -R 10001:10001 /persistencia
+          securityContext:
+            runAsUser: 0
+            runAsGroup: 0
+            runAsNonRoot: false
+          volumeMounts:
+            - name: persistencia
+              mountPath: /persistencia
+      containers:
+        - name: eventos-service
+          image: eventos-express/eventos-service:k8s-v1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: aplicacao-config
+            - secretRef:
+                name: eventos-express-secrets
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: DB_URL
+              value: "jdbc:h2:file:/app/persistencia/data/eventosdb;DB_CLOSE_ON_EXIT=FALSE"
+            - name: AUDITORIA_ARQUIVO
+              value: "/app/persistencia/logs/auditoria-eventos.jsonl"
+          startupProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 384Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          volumeMounts:
+            - name: persistencia
+              mountPath: /app/persistencia
+      volumes:
+        - name: persistencia
+          persistentVolumeClaim:
+            claimName: eventos-service-dados
