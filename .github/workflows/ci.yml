@@ -1,0 +1,63 @@
+name: CI - Eventos Service
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validar:
+    name: Testes, build e imagem Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Obter o codigo
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Configurar Java 21
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Preparar o Maven Wrapper para Linux
+        run: |
+          sed -i 's/\r$//' mvnw
+          chmod +x mvnw
+
+      - name: Executar testes e gerar o JAR
+        run: ./mvnw -B -ntp clean verify
+
+      - name: Guardar os relatorios dos testes
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: relatorios-testes-eventos
+          path: target/surefire-reports/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Configurar Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Validar a construcao da imagem Docker
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: eventos-express/eventos-service:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
